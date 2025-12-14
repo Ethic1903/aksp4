@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<script src="https://cdn.jsdelivr.net/sockjs/1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<h3>WS Echo</h3>
+
+<button onclick="c()">Connect</button>
+<button onclick="s()">Send</button>
+
+<br><br>
+<input id="m" placeholder="msg">
+<button onclick="send()">Send Msg</button>
+
+<br><br>
+<textarea id="l" rows="10" cols="60" readonly></textarea>
+
+<script>
+let ws = null;
+let l = document.getElementById('l');
+
+function log(t) { l.value += t + '\n'; l.scrollTop = l.scrollHeight; }
+
+function c() {
+    log('Connecting...');
+    let s = new SockJS('/webs');
+    ws = Stomp.over(s);
+    ws.connect({}, function() {
+        log('Connected');
+        ws.subscribe('/topic/echo', function(m) {
+            let d = JSON.parse(m.body);
+            log(d.from + ': ' + d.text);
+        });
+    });
+}
+
+function s() {
+    if (!ws) { log('No connection'); return; }
+    ws.send('/app/webs', {}, JSON.stringify({from:'test',text:'hello'}));
+    log('Sent test');
+}
+
+function send() {
+    let msg = document.getElementById('m').value;
+    if (!msg) return;
+    if (!ws) { log('No connection'); return; }
+    ws.send('/app/webs', {}, JSON.stringify({from:'user',text:msg}));
+    document.getElementById('m').value = '';
+    log('Sent: ' + msg);
+}
+
+log('Ready.');
+</script>
+</html>

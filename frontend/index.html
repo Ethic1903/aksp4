@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>WebSocket Echo</title>
+    <script src="https://cdn.jsdelivr.net/sockjs/1/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        #response {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 20px;
+            min-height: 100px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #response p {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+    <script>
+        var stompClient = null;
+        
+        function setConnected(connected) {
+            document.getElementById('connect').disabled = connected;
+            document.getElementById('disconnect').disabled = !connected;
+            document.getElementById('conversation').style.display = connected ? 'block' : 'none';
+            document.getElementById('response').innerHTML = '';
+        }
+        
+        function connect() {
+            var socket = new SockJS('/webs');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function (frame) {
+                setConnected(true);
+                console.log('Connected: ' + frame);
+                stompClient.subscribe('/topic/echo', function (message) {
+                    showMessage(JSON.parse(message.body));
+                });
+            });
+        }
+        
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+            }
+            setConnected(false);
+            console.log('Disconnected');
+        }
+        
+        function sendMessage() {
+            var from = document.getElementById('from').value;
+            var text = document.getElementById('text').value;
+            if (from && text) {
+                stompClient.send('/app/webs', {}, JSON.stringify({from: from, text: text}));
+                document.getElementById('text').value = '';
+            }
+        }
+        
+        function showMessage(message) {
+            var response = document.getElementById('response');
+            var p = document.createElement('p');
+            p.appendChild(document.createTextNode(message.from + ': ' + message.text));
+            response.appendChild(p);
+            response.scrollTop = response.scrollHeight;
+        }
+        
+        function handleKeyPress(event) {
+            if (event.keyCode === 13) {
+                sendMessage();
+                return false;
+            }
+            return true;
+        }
+    </script>
+</head>
+<body onload="setConnected(false)">
+    <div class="container">
+        <h1>WebSocket Echo Client</h1>
+        
+        <div class="form-group">
+            <button id="connect" onclick="connect();">Connect</button>
+            <button id="disconnect" onclick="disconnect();" disabled>Disconnect</button>
+        </div>
+        
+        <div id="conversation" style="display: none;">
+            <div class="form-group">
+                <label for="from">Your Name:</label>
+                <input type="text" id="from" placeholder="Enter your name">
+            </div>
+            
+            <div class="form-group">
+                <label for="text">Message:</label>
+                <input type="text" id="text" placeholder="Type your message here" onkeypress="return handleKeyPress(event)">
+            </div>
+            
+            <div class="form-group">
+                <button onclick="sendMessage();">Send Message</button>
+            </div>
+            
+            <h3>Echo Responses:</h3>
+            <div id="response"></div>
+        </div>
+    </div>
+</body>
+</html>
